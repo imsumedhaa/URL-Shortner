@@ -22,11 +22,12 @@ func NewPostgres(host, port, username, password, dbname string) (*Postgres, erro
 	return &Postgres{dbclient: dbClient}, nil
 }
 
-func (p *Postgres) getShortUrl(originalUrl string)( error){
+func (p *Postgres) GetShortUrl(originalUrl string)( error){
 
 	if originalUrl == ""{
 		return fmt.Errorf("original url cannot be empty")
 	}
+
 	
 	return nil
 }

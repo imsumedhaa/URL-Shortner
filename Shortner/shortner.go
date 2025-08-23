@@ -27,14 +27,3 @@ func Generator(OriginalURL string)string{
 
 	return abc[:8]
 }
-
-func Shortner(originalUrl string)string{
-	shortUrl := Generator(originalUrl)
-	id := shortUrl
-	urlDb[id] = URL{
-		OriginalURL: originalUrl,
-		ShortURL: shortUrl,
-	}
-	fmt.Println(urlDb)
-	return ""
-}

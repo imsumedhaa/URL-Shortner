@@ -6,10 +6,11 @@ import (
 	"net/http"
 
 	"github.com/imsumedhaa/In-memory-database/pkg/client/postgres"
+	shortner "github.com/imsumedhaa/URL-Shortner/Shortner"
 )
 
 type shortenResponse struct {
-	Code string `json:"Code"`
+	ShortURL string `json:"Code"`
 }
 
 type ShortenRequest struct {
@@ -28,7 +29,6 @@ func NewHttp(host, port, username, password, dbname string) (*Http, error) {
 	}
 	return &Http{client: dbClient}, nil
 }
-	code := h.shortner.Generator()
 
 func (h *Http) ShortenHandeler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -42,22 +42,22 @@ func (h *Http) ShortenHandeler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.OriginalURL== "" {
+	if req.OriginalURL == "" {
 		http.Error(w, "URL cannot be empty", http.StatusBadRequest)
 		return
 	}
 
-	code := Shortner.Generator()
+	code := shortner.Generator(req.OriginalURL)
 
-	shortURL := fmt.Fprint(w,"http://localhost:8080/%s",code)
+	shortURL := fmt.Sprint(w, "http://localhost:8080/%s", code)
 
-
-	if err := h.client.CreatePostgresRow(req.OriginalURL,shortURL); err != nil {
+	if err := h.client.CreatePostgresRow(req.OriginalURL, shortURL); err != nil {
 		http.Error(w, fmt.Sprintf("Failed to create row: %s", err), http.StatusInternalServerError)
 		return
 	}
 
-	response := Response{Message: "Row created succesfully"}
+	response := shortenResponse{ShortURL: shortURL}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+
 }
