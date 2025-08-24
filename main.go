@@ -3,11 +3,18 @@ package main
 import (
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 
 	"github.com/imsumedhaa/URL-Shortner/api"
+	"github.com/joho/godotenv"
 )
+
+func init() {
+	// load .env file
+	if err := godotenv.Load(); err != nil {
+		log.Println("No env file found")
+	}
+}
 
 func main() {
 
@@ -27,16 +34,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	httpServer, err := api.NewHttp(host, port, username, password, dbname)
+	if err != nil {
+		fmt.Printf("Error creating the http connection: %v\n", err)
+		os.Exit(1)
+	}
 
-	// Define a simple handler
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, "Hello World")
-	})
-
-	// Server runs on port 8080
-	addr := ":8080"
-	log.Printf("Server listening on %s", addr)
-	if err := http.ListenAndServe(addr, nil); err != nil {
+	// 🚀 Start the web server
+	if err := httpServer.Run(); err != nil {
 		log.Fatal(err)
 	}
 }

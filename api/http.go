@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/imsumedhaa/In-memory-database/pkg/client/postgres"
@@ -30,7 +31,7 @@ func NewHttp(host, port, username, password, dbname string) (*Http, error) {
 	return &Http{client: dbClient}, nil
 }
 
-func (h *Http) ShortenHandeler(w http.ResponseWriter, r *http.Request) {
+func (h *Http) Shorten(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -49,7 +50,7 @@ func (h *Http) ShortenHandeler(w http.ResponseWriter, r *http.Request) {
 
 	code := shortner.Generator(req.OriginalURL)
 
-	shortURL := fmt.Sprint(w, "http://localhost:8080/%s", code)
+	shortURL := fmt.Sprintf("http://localhost:8080/%s", code)
 
 	if err := h.client.CreatePostgresRow(req.OriginalURL, shortURL); err != nil {
 		http.Error(w, fmt.Sprintf("Failed to create row: %s", err), http.StatusInternalServerError)
@@ -59,5 +60,28 @@ func (h *Http) ShortenHandeler(w http.ResponseWriter, r *http.Request) {
 	response := shortenResponse{ShortURL: shortURL}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+
+}
+
+func (h *Http) GetOriginal(w http.ResponseWriter, r *http.Request) {
+
+
+
+
+}
+
+func (h *Http) Run() error {
+	h.routes()
+	log.Println("Server started on http://localhost:8080")
+	err := http.ListenAndServe(":8080", nil)
+	if err != nil {
+		return fmt.Errorf("failed to run server: %w", err)
+	}
+	return nil
+}
+
+func (h *Http) routes() {
+	http.HandleFunc("/create", h.Shorten)
+	http.HandleFunc("/get", h.GetOriginal)
 
 }
