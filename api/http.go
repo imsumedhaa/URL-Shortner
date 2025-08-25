@@ -8,14 +8,17 @@ import (
 
 	"github.com/imsumedhaa/In-memory-database/pkg/client/postgres"
 	shortner "github.com/imsumedhaa/URL-Shortner/Shortner"
+	_ "github.com/lib/pq"
 )
 
-type shortenResponse struct {
-	ShortURL string `json:"Code"`
+type Response struct {
+	ShortURL    string `json:"ShortURL"`
+	OriginalURL string `json:"OriginalURL"`
 }
 
-type ShortenRequest struct {
-	OriginalURL string `json:"OgURL"`
+type Request struct {
+	OriginalURL string `json:"OriginalURL"`
+	ShortURL    string `json:"ShortURL"`
 }
 
 type Http struct {
@@ -37,7 +40,7 @@ func (h *Http) Shorten(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req ShortenRequest
+	var req Request
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, fmt.Sprintf("Invalid body request: %s", err), http.StatusBadRequest)
 		return
@@ -57,7 +60,7 @@ func (h *Http) Shorten(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := shortenResponse{ShortURL: shortURL}
+	response := Response{ShortURL: shortURL}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 
@@ -65,8 +68,26 @@ func (h *Http) Shorten(w http.ResponseWriter, r *http.Request) {
 
 func (h *Http) GetOriginal(w http.ResponseWriter, r *http.Request) {
 
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 
+	short := r.URL.Query().Get("short")
+	if short == "" {
+		http.Error(w, "Short url cannot be empty", http.StatusBadRequest)
+		return
+	}
 
+	ogUrl, err := h.client.GetPostgresRow(short)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to get the row: %s", err), http.StatusInternalServerError)
+		return
+	}
+
+	response := Response{OriginalURL: ogUrl}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 
 }
 

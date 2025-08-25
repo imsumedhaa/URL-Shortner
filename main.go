@@ -27,21 +27,17 @@ func main() {
 	if host == "" || port == "" || username == "" || password == "" || dbname == "" {
 		log.Fatal("Missing one or more required environment variables")
 	}
-	_, err := api.NewHttp(host, port, username, password, dbname)
+
+	httpConfig, err := api.NewHttp(host, port, username, password, dbname)
 
 	if err != nil {
 		fmt.Printf("Error creating the http connection: %v\n", err)
 		os.Exit(1)
 	}
 
-	httpServer, err := api.NewHttp(host, port, username, password, dbname)
-	if err != nil {
-		fmt.Printf("Error creating the http connection: %v\n", err)
+	if err := httpConfig.Run(); err != nil {
+		fmt.Printf("Error run http server: %v\n", err)
 		os.Exit(1)
 	}
 
-	// 🚀 Start the web server
-	if err := httpServer.Run(); err != nil {
-		log.Fatal(err)
-	}
 }
