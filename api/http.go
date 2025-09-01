@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/imsumedhaa/In-memory-database/pkg/client/postgres"
 	shortner "github.com/imsumedhaa/URL-Shortner/Shortner"
@@ -91,6 +92,51 @@ func (h *Http) GetOriginal(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func (h *Http) DeleteShortUrl(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req Request
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid json body", http.StatusBadRequest)
+		return
+	}
+
+	if req.OriginalURL == "" {
+		http.Error(w, "Original Url cannot be empty", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.client.DeletePostgresRow(req.OriginalURL); err != nil {
+		http.Error(w, fmt.Sprintf("Failed to delete the row: %s", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": fmt.Sprintf("Short URL for '%s' deleted successfully", req.OriginalURL),
+	})
+
+}
+
+func (h *Http) Redirect(w http.ResponseWriter, r *http.Request) {
+	shortCode := strings.TrimPrefix(r.URL.Path, "/")
+	if shortCode == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	originalURL, err := h.client.GetPostgresRow(shortCode)
+	if err != nil || originalURL == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	http.Redirect(w, r, originalURL, http.StatusFound)
+}
+
 func (h *Http) Run() error {
 	h.routes()
 	log.Println("Server started on http://localhost:8080")
@@ -104,5 +150,7 @@ func (h *Http) Run() error {
 func (h *Http) routes() {
 	http.HandleFunc("/create", h.Shorten)
 	http.HandleFunc("/get", h.GetOriginal)
+	http.HandleFunc("/delete", h.DeleteShortUrl)
+	http.HandleFunc("/", h.Redirect)
 
 }
