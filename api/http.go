@@ -52,44 +52,55 @@ func (h *Http) Shorten(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Generate only a short code
 	code := shortner.Generator(req.OriginalURL)
 
-	shortURL := fmt.Sprintf("http://localhost:8080/%s", code)
-
-	if err := h.client.CreatePostgresRow(req.OriginalURL, shortURL); err != nil {
+	// Store mapping in DB → shortCode -> originalURL
+	if err := h.client.CreatePostgresRow(code, req.OriginalURL); err != nil {
 		http.Error(w, fmt.Sprintf("Failed to create row: %s", err), http.StatusInternalServerError)
 		return
 	}
 
-	response := Response{ShortURL: shortURL}
+	// Construct full short URL to return to user
+	shortURL := fmt.Sprintf("http://localhost:8080/%s", code)
+
+	response := Response{
+		ShortURL:    shortURL,
+		OriginalURL: req.OriginalURL,
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
-
 }
 
+// Get original URL from short code
 func (h *Http) GetOriginal(w http.ResponseWriter, r *http.Request) {
-
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	short := r.URL.Query().Get("short")
-	if short == "" {
+	fmt.Println("Get Method call..")
+
+	// Accept short code from query parameter ?short=<code>
+	shortCode := r.URL.Query().Get("short")
+	if shortCode == "" {
 		http.Error(w, "Short url cannot be empty", http.StatusBadRequest)
 		return
 	}
 
-	ogUrl, err := h.client.GetPostgresRow(short)
+	original, err := h.client.GetPostgresRow(shortCode)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to get the row: %s", err), http.StatusInternalServerError)
 		return
 	}
 
-	response := Response{OriginalURL: ogUrl}
+	response := map[string]string{
+		"ShortCode": shortCode,
+		"Original":  original,
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
-
 }
 
 func (h *Http) DeleteShortUrl(w http.ResponseWriter, r *http.Request) {
@@ -98,28 +109,36 @@ func (h *Http) DeleteShortUrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmt.Println("Delete method calling...")
 	var req Request
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid json body", http.StatusBadRequest)
 		return
 	}
 
-	if req.OriginalURL == "" {
-		http.Error(w, "Original Url cannot be empty", http.StatusBadRequest)
+	if req.ShortURL == "" {
+		http.Error(w, "Short code cannot be empty", http.StatusBadRequest)
 		return
 	}
 
-	if err := h.client.DeletePostgresRow(req.OriginalURL); err != nil {
+	// Trim full URL if user sends "http://localhost:8080/abcd123"
+	shortCode := req.ShortURL
+	if strings.Contains(shortCode, "/") {
+		parts := strings.Split(shortCode, "/")
+		shortCode = parts[len(parts)-1]
+	}
+
+	if err := h.client.DeletePostgresRow(shortCode); err != nil {
 		http.Error(w, fmt.Sprintf("Failed to delete the row: %s", err), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
-		"message": fmt.Sprintf("Short URL for '%s' deleted successfully", req.OriginalURL),
+		"message": fmt.Sprintf("Short URL '%s' deleted successfully", shortCode),
 	})
-
 }
+
 
 func (h *Http) Redirect(w http.ResponseWriter, r *http.Request) {
 	shortCode := strings.TrimPrefix(r.URL.Path, "/")
