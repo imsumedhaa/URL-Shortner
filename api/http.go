@@ -35,11 +35,13 @@ func NewHttp(host, port, username, password, dbname string) (*Http, error) {
 	return &Http{client: dbClient}, nil
 }
 
-func (h *Http) Shorten(w http.ResponseWriter, r *http.Request) {
+func (h *Http) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
+	fmt.Println("POst method calling..")
 
 	var req Request
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -117,7 +119,7 @@ func (h *Http) DeleteShortUrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.ShortURL == "" {
-		http.Error(w, "Short code cannot be empty", http.StatusBadRequest)
+		http.Error(w, "Short URL cannot be empty", http.StatusBadRequest)
 		return
 	}
 
@@ -139,14 +141,14 @@ func (h *Http) DeleteShortUrl(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-
 func (h *Http) Redirect(w http.ResponseWriter, r *http.Request) {
 	shortCode := strings.TrimPrefix(r.URL.Path, "/")
 	if shortCode == "" {
 		http.NotFound(w, r)
 		return
 	}
-
+	fmt.Println("Redirect call...")
+	
 	originalURL, err := h.client.GetPostgresRow(shortCode)
 	if err != nil || originalURL == "" {
 		http.NotFound(w, r)
@@ -167,7 +169,7 @@ func (h *Http) Run() error {
 }
 
 func (h *Http) routes() {
-	http.HandleFunc("/create", h.Shorten)
+	http.HandleFunc("/create", h.CreateShortURL)
 	http.HandleFunc("/get", h.GetOriginal)
 	http.HandleFunc("/delete", h.DeleteShortUrl)
 	http.HandleFunc("/", h.Redirect)
