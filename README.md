@@ -54,6 +54,15 @@ docker build -t docker_username/project_name:v1.0.0 .
 ```
 docker push docker_username/project_name:v1.0.0
 ```
+## ☸️ Deploying the Application to Kubernetes
+
+Once your Docker image is pushed to Docker Hub, you can deploy it to your Kubernetes cluster using a **Deployment** and a **Service**.
+
+```
+kubectl apply -f deployment.yaml
+kubectl apply -f service.yaml
+```
+
 ## 🔄 Accessing Your Application via Port Forwarding
 
 You can use the following command to access applications or services running inside your Kubernetes cluster **as if they were running locally** on your machine:
@@ -68,6 +77,7 @@ kubectl port-forward service/api-service 8081:8500
 The port you access in your browser.  
 
 Example:
+
 `curl -X POST http://localhost:8081/create  -H "Content-Type: application/json"   -d '{"OriginalURL":"https://www.youtube.com/"}'`
 
 >**8500 → Kubernetes Service**  
